@@ -10,7 +10,7 @@ Hour = os.date("%H");
 Minute = os.date("%M");
 Time = os.date("%S");
 Time = (Hour * 60 + Minute) * 60 + Time;
-if (Time - Last <= 10) then
+if (Time - Last <= 60) then
     os.exit();
 end
 

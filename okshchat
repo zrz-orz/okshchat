@@ -70,7 +70,7 @@ function recieve_daemon
 		flush_screen
         cp $SAVE_FILE $TMP_SAVE_FILE 
 		listen_for_one_line | grep -v 'punt!' >> "$SAVE_FILE"
-        $NOTICE $NICK
+        $NOTICE $NICK 
 	done
 }
 
