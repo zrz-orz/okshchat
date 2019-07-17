@@ -1,0 +1,96 @@
+#!/bin/bash
+cd "$(dirname "$0")"
+
+NICK='zrz_orz'
+LOCAL_IP='172.16.13.182'
+REMOTE_IP='172.16.13.110'
+CONNECT_PORT='7117'
+
+SAVE_FILE='save.txt'
+TMP_SAVE_FILE='_save.txt'
+BB='./busybox'
+TIMEOUT='10'
+NOTICE='./notice.lua'
+
+$BB touch "$SAVE_FILE"
+
+which tput > /dev/null || {
+	echo 'Please install tput!'
+	exit 1
+}
+
+tput init
+
+function listen_for_one_line
+{
+	($BB nc -l -p $CONNECT_PORT -e sh '-c' "$BB head -n 1 >&2") 2>&1
+}
+
+function send_one_line
+{
+	local ip="$1"
+	local content="$2"
+	$BB timeout $TIMEOUT $BB nc $ip $CONNECT_PORT <<<"$2" &
+}
+
+function clear
+{
+	tput sc
+	tput cup 0 0
+	$BB awk -v line=$(tput lines) -e '
+	BEGIN {
+	buf = "";
+	for (i = 2; i < line; ++i)
+		buf = buf"\e[K\e[1B";
+	buf = buf"\e[K"
+	print buf;
+}
+'
+	tput rc
+}
+
+function flush_screen
+{
+	tput civis
+	clear
+
+	tput sc
+	tput cup 0 0
+	$BB tail -n $(($(tput lines) - 1)) "$SAVE_FILE"
+	#$BB tail -n $(($(tput lines) - 1)) "$SAVE_FILE" > "$SAVE_FILE.tmp"
+	#mv "$SAVE_FILE.tmp" "$SAVE_FILE"
+	#cat "$SAVE_FILE"
+	tput rc
+	tput cnorm
+}
+
+function recieve_daemon
+{
+	while true; do
+		flush_screen
+        cp $SAVE_FILE $TMP_SAVE_FILE 
+		listen_for_one_line | grep -v 'punt!' >> "$SAVE_FILE"
+        $NOTICE $NICK
+	done
+}
+
+function input
+{
+	while true; do
+		read -e line
+		send_one_line $LOCAL_IP "$NICK: $line"
+		send_one_line $REMOTE_IP "$NICK: $line"
+	done
+}
+
+function main
+{
+	tput cup $(tput lines) 0
+	clear
+	recieve_daemon &
+	input
+}
+
+trap "flush_screen" SIGWINCH
+main
+wait
